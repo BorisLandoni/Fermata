@@ -22,12 +22,15 @@ import androidx.annotation.Nullable;
 import org.json.JSONException;
 import org.json.JSONTokener;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.List;
 
 import me.aap.fermata.BuildConfig;
 import me.aap.fermata.addon.web.FermataChromeClient;
 import me.aap.fermata.addon.web.FermataJsInterface;
 import me.aap.fermata.addon.web.FermataWebView;
+import me.aap.fermata.addon.web.R;
 import me.aap.fermata.media.service.MediaSessionCallback;
 import me.aap.fermata.ui.activity.MainActivityDelegate;
 import me.aap.utils.async.FutureSupplier;
@@ -39,6 +42,7 @@ import me.aap.utils.pref.PreferenceStore;
  * @author Andrey Pavlenko
  */
 public class YoutubeWebView extends FermataWebView {
+	private static String adBlockScript;
 	private static final String CLEAR_HIGHEST_VIDEO_QUALITY_JS =
 			"function clearFermataQ() {\n" +
 					"  if (!window.__fermataQ) return;\n" +
@@ -241,6 +245,7 @@ public class YoutubeWebView extends FermataWebView {
 	protected void pageLoaded(String uri) {
 		attachListeners();
 		injectSponsorBlock();
+		injectAdBlock();
 		addFocusHighlight();
 		CookieManager.getInstance().flush();
 	}
@@ -304,6 +309,23 @@ public class YoutubeWebView extends FermataWebView {
 		String script = YoutubeSponsorBlock.getScript(getContext(), getAddon().getPreferenceStore());
 		if (!script.isEmpty()) evaluateJavascript(script, result -> configureSponsorBlock());
 		else configureSponsorBlock();
+	}
+
+	private void injectAdBlock() {
+		if (!getAddon().skipAd()) return;
+		String script = adBlockScript;
+		if (script == null) {
+			try (InputStream in = getResources().openRawResource(R.raw.youtube_adblock);
+					 ByteArrayOutputStream out = new ByteArrayOutputStream(4096)) {
+				byte[] buf = new byte[4096];
+				for (int n = in.read(buf); n != -1; n = in.read(buf)) out.write(buf, 0, n);
+				script = adBlockScript = out.toString("UTF-8");
+			} catch (Exception ex) {
+				Log.e(ex, "Failed to load ad block script");
+				script = adBlockScript = "";
+			}
+		}
+		if (!script.isEmpty()) evaluateJavascript(script, null);
 	}
 
 	private void configureSponsorBlock() {
