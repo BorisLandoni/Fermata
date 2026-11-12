@@ -7,6 +7,7 @@ import android.content.Context;
 import androidx.annotation.IdRes;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import me.aap.fermata.addon.web.WebBrowserAddon;
 import me.aap.fermata.ui.activity.MainActivityPrefs;
 import me.aap.utils.function.BooleanSupplier;
 import me.aap.utils.function.IntSupplier;
+import me.aap.utils.function.LongSupplier;
 import me.aap.utils.function.Supplier;
 import me.aap.utils.misc.ChangeableCondition;
 import me.aap.utils.pref.PreferenceSet;
@@ -45,6 +47,13 @@ public class YoutubeAddon extends WebBrowserAddon implements PreferenceStore.Lis
 	private static final Pref<BooleanSupplier> YT_SKIP_ADD = AUTO ? Pref.b("YT_SKIP_ADD", true) : null;
 	private static final Pref<IntSupplier> YT_REOPEN_VIDEO_MIN =
 			AUTO ? Pref.i("YT_REOPEN_VIDEO_MIN", 10) : null;
+	private static final Pref<BooleanSupplier> YT_REOPEN_ALWAYS =
+			AUTO ? Pref.b("YT_REOPEN_ALWAYS", true) : null;
+	// The video left in the car, kept across restarts for YT_REOPEN_ALWAYS
+	private static final Pref<Supplier<String>> YT_CAR_VIDEO_URL = Pref.s("YT_CAR_VIDEO_URL");
+	private static final Pref<LongSupplier> YT_CAR_VIDEO_POS = Pref.l("YT_CAR_VIDEO_POS", 0L);
+	private static final Pref<BooleanSupplier> YT_REOPEN_PLAYING =
+			AUTO ? Pref.b("YT_REOPEN_PLAYING", true) : null;
 	private static final Pref<BooleanSupplier> YT_PLAYER_CONTROLS =
 			Pref.b("YT_PLAYER_CONTROLS", false);
 	private static final Pref<BooleanSupplier> YT_PAUSE_ON_LEAVE = Pref.b("YT_PAUSE_ON_LEAVE", !AUTO);
@@ -122,12 +131,26 @@ public class YoutubeAddon extends WebBrowserAddon implements PreferenceStore.Lis
 		});
 
 		if (AUTO) {
+			set.addBooleanPref(o -> {
+				o.store = getPreferenceStore();
+				o.pref = YT_REOPEN_ALWAYS;
+				o.title = R.string.reopen_video_always;
+				o.subtitle = R.string.reopen_video_always_sub;
+				o.visibility = visibility;
+			});
 			set.addIntPref(o -> {
 				o.store = getPreferenceStore();
 				o.pref = YT_REOPEN_VIDEO_MIN;
 				o.seekMax = 60;
 				o.title = R.string.reopen_video_min;
 				o.subtitle = R.string.reopen_video_min_sub;
+				o.visibility = visibility;
+			});
+			set.addBooleanPref(o -> {
+				o.store = getPreferenceStore();
+				o.pref = YT_REOPEN_PLAYING;
+				o.title = R.string.reopen_video_playing;
+				o.subtitle = R.string.reopen_video_playing_sub;
 				o.visibility = visibility;
 			});
 			set.addBooleanPref(o -> {
@@ -207,6 +230,37 @@ public class YoutubeAddon extends WebBrowserAddon implements PreferenceStore.Lis
 	// Minutes within which a new car screen reopens the last video, 0 for never
 	int reopenVideoMinutes() {
 		return AUTO ? getPreferenceStore().getIntPref(YT_REOPEN_VIDEO_MIN) : 0;
+	}
+
+	// Whether a new car screen reopens the last video however long ago it was left
+	boolean reopenVideoAlways() {
+		return AUTO && getPreferenceStore().getBooleanPref(YT_REOPEN_ALWAYS);
+	}
+
+	void saveCarVideo(@Nullable YoutubeWebView.Video v) {
+		if (!AUTO) return;
+		try (PreferenceStore.Edit e = getPreferenceStore().editPreferenceStore()) {
+			if (v == null) {
+				e.removePref(YT_CAR_VIDEO_URL);
+				e.removePref(YT_CAR_VIDEO_POS);
+			} else {
+				e.setStringPref(YT_CAR_VIDEO_URL, v.url());
+				e.setLongPref(YT_CAR_VIDEO_POS, v.position());
+			}
+		}
+	}
+
+	@Nullable
+	YoutubeWebView.Video loadCarVideo() {
+		if (!AUTO) return null;
+		String url = getPreferenceStore().getStringPref(YT_CAR_VIDEO_URL);
+		if ((url == null) || url.isEmpty()) return null;
+		return new YoutubeWebView.Video(url, getPreferenceStore().getLongPref(YT_CAR_VIDEO_POS), false);
+	}
+
+	// Whether a video reopened in a new car screen plays, rather than waits paused
+	boolean reopenVideoPlaying() {
+		return AUTO && getPreferenceStore().getBooleanPref(YT_REOPEN_PLAYING);
 	}
 
 	boolean autoHighestQualityChanged(List<Pref<?>> prefs) {

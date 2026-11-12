@@ -363,7 +363,22 @@ public class ControlPanelView extends ConstraintLayout
 	@Override
 	public boolean onDoubleTap(MotionEvent e) {
 		if (!(gestureSource instanceof VideoView)) return false;
-		getActivity().getMediaServiceBinder().onPlayPauseButtonClick();
+		FermataServiceUiBinder b = getActivity().getMediaServiceBinder();
+		// As in YouTube's app, the left third rewinds and the right one fast forwards. The middle hides
+		// the video, e.g. while driving, and shows it again: the audio goes on.
+		int w = gestureSource.getWidth();
+		float x = e.getX();
+
+		if ((w > 0) && (x < w / 3f)) {
+			b.onRwFfButtonClick(false);
+			onVideoSeek();
+		} else if ((w > 0) && (x > w * 2f / 3f)) {
+			b.onRwFfButtonClick(true);
+			onVideoSeek();
+		} else {
+			((VideoView) gestureSource).toggleHidden();
+		}
+
 		return true;
 	}
 

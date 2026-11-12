@@ -186,6 +186,8 @@ public class MediaSessionCallback extends MediaSessionCompat.Callback
 	@Nullable
 	private final AsyncQueryHandler carConnectionQuery;
 	private boolean carConnected;
+	// Playing when the car disconnected: carry on when it connects again, as a car radio does
+	private boolean resumeOnCarConnect;
 	private MediaEngine engine;
 	private boolean playOnPrepared;
 	private boolean playOnAudioFocus;
@@ -265,7 +267,17 @@ public class MediaSessionCallback extends MediaSessionCompat.Callback
 				@Override
 				protected void onQueryComplete(int token, Object cookie, Cursor c) {
 					boolean connected = isCarConnected(c);
-					if (carConnected && !connected) onPause();
+
+					if (carConnected && !connected) {
+						resumeOnCarConnect = isPlaying();
+						onPause();
+					} else if (!carConnected && connected && resumeOnCarConnect) {
+						resumeOnCarConnect = false;
+						// Only what was paused here, with its engine still there: a car screen that's gone
+						// with its video reopens it by itself when it opens again
+						if (getPlaybackState().getState() == PlaybackStateCompat.STATE_PAUSED) onPlay();
+					}
+
 					carConnected = connected;
 				}
 			};

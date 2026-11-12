@@ -36,4 +36,8 @@
     <string name="sponsorblock_cat_filler_sub">Aggressive category; disabled by default.</string>
     <string name="youtube_pause_on_leave">Pause when leaving the screen</string>
     <string name="youtube_pause_on_leave_sub">Pause when Fermata goes off screen and resume when it\'s back. Off: keep playing in the background</string>
+    <string name="reopen_video_playing">Resume playing the reopened video</string>
+    <string name="reopen_video_playing_sub">Otherwise it reopens paused, waiting for you to press play</string>
+    <string name="reopen_video_always">Always reopen the last video in the car</string>
+    <string name="reopen_video_always_sub">However long ago you left it, even after restarting the phone. Otherwise only within the minutes below</string>
 </resources>

@@ -124,7 +124,11 @@ public class YoutubeWebView extends FermataWebView {
 			// Only a car screen's video: a phone screen restores its own from its saved state.
 			// Its playback stops here, so it reopens paused rather than start playing out of the blue.
 			Video v = a.isCarActivity() ? getVideo(a.getMediaSessionCallback()) : null;
-			if (v != null) closedVideo = new Video(v.url(), v.position(), false, v.left());
+			if (v != null) {
+				closedVideo = new Video(v.url(), v.position(), false, v.left());
+				// Also kept for a car screen opened after a restart, as the next drive may well be
+				getAddon().saveCarVideo(closedVideo);
+			}
 			js.pageRemoved();
 		}
 		super.onActivityEvent(a, e);
@@ -148,13 +152,21 @@ public class YoutubeWebView extends FermataWebView {
 		} else {
 			v = closedVideo;
 			closedVideo = null;
+			// Gone with the process, e.g. on a phone that has been restarted since
+			if ((v == null) && page.getAddon().reopenVideoAlways()) v = page.getAddon().loadCarVideo();
 			if (v == null) return null;
 		}
 
+		page.getAddon().saveCarVideo(null);
+
 		// Only a video left recently: an older one would be unexpected, and the car screen opens on
 		// YouTube's home instead
-		long limit = page.getAddon().reopenVideoMinutes() * 60000L;
-		return ((limit > 0) && (SystemClock.elapsedRealtime() - v.left() <= limit)) ? v : null;
+		if (!page.getAddon().reopenVideoAlways()) {
+			long limit = page.getAddon().reopenVideoMinutes() * 60000L;
+			if ((limit <= 0) || (SystemClock.elapsedRealtime() - v.left() > limit)) return null;
+		}
+		// The car pauses the video as it disconnects: carry on playing if so set, as a car radio does
+		return page.getAddon().reopenVideoPlaying() ? new Video(v.url(), v.position(), true, v.left()) : v;
 	}
 
 	// The video playing or paused on this page

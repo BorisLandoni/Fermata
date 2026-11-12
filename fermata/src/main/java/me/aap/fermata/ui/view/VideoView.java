@@ -102,6 +102,55 @@ public class VideoView extends FrameLayout
 			a.getLib().getPrefs().addBroadcastListener(this);
 			setClockPos(a.getPrefs().getClockPosPref());
 		});
+		applyHidden();
+	}
+
+	// Hidden by a double tap in its middle, e.g. while driving: the audio goes on. It stays so for the
+	// next videos too, until it's shown again the same way.
+	private static boolean hidden;
+
+	public void toggleHidden() {
+		hidden = !hidden;
+		applyHidden();
+	}
+
+	private void applyHidden() {
+		setForeground(hidden ? new HiddenDrawable(getContext().getString(R.string.video_hidden)) : null);
+	}
+
+	private static final class HiddenDrawable extends android.graphics.drawable.Drawable {
+		private final String text;
+		private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+		HiddenDrawable(String text) {
+			this.text = text;
+			paint.setColor(Color.GRAY);
+			paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+		}
+
+		@Override
+		public void draw(@NonNull android.graphics.Canvas c) {
+			android.graphics.Rect b = getBounds();
+			c.drawColor(Color.BLACK);
+			// Fit the width too, e.g. on a phone held upright
+			paint.setTextSize(100f);
+			float fit = 100f * b.width() * 0.9f / Math.max(paint.measureText(text), 1f);
+			paint.setTextSize(Math.max(Math.min(b.height() / 16f, fit), 12f));
+			c.drawText(text, b.exactCenterX(), b.exactCenterY(), paint);
+		}
+
+		@Override
+		public void setAlpha(int alpha) {
+		}
+
+		@Override
+		public void setColorFilter(@Nullable android.graphics.ColorFilter cf) {
+		}
+
+		@Override
+		public int getOpacity() {
+			return android.graphics.PixelFormat.OPAQUE;
+		}
 	}
 
 	protected void init(Context context) {

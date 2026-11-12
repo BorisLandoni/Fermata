@@ -13,4 +13,8 @@
     <string name="video_quality">Qualità video</string>
     <string name="open_on_start">Apri all\'avvio</string>
     <string name="try_to_skip_ad">Prova a saltare gli annunci</string>
+    <string name="reopen_video_playing">Riprendi la riproduzione del video riaperto</string>
+    <string name="reopen_video_playing_sub">Altrimenti viene riaperto in pausa, in attesa che tu prema play</string>
+    <string name="reopen_video_always">Riapri sempre l\'ultimo video in auto</string>
+    <string name="reopen_video_always_sub">Anche dopo molte ore o dopo aver riavviato il telefono. Altrimenti solo entro i minuti qui sotto</string>
 </resources>

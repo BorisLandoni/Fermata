@@ -73,7 +73,13 @@ public class AddonManager extends BasicEventBroadcaster<AddonManager.Listener>
 	public synchronized FutureSupplier<FermataAddon> getOrInstallAddon(String moduleOrClassName) {
 		var a = getAddon(moduleOrClassName);
 		if (a != null) return completed(a);
-		var info = FermataAddon.findAddonInfo(moduleOrClassName);
+		AddonInfo info;
+		try {
+			info = FermataAddon.findAddonInfo(moduleOrClassName);
+		} catch (RuntimeException ex) {
+			// A module left out of this build, e.g. whisper: fail the future rather than crash the caller
+			return failed(ex);
+		}
 		var prefs = FermataApplication.get().getPreferenceStore();
 		if (!prefs.getBooleanPref(info.enabledPref)) prefs.applyBooleanPref(info.enabledPref, true);
 		install(info);
